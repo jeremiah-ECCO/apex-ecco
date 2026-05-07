@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 · Ethereal Connections Co.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Rajdhani:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal-core: #00f0ff;
+  --teal-dim: #00a8a8;
+  --gold-structure: #C9B79C;
+  --bg-void: #f4f6f9;
+  --text-main: #111111;
+  --glass-bg: rgba(255,255,255,0.45);
+  --glass-border: rgba(255,255,255,0.92);
+  --glass-shadow: inset 0 0 0 1px rgba(255,255,255,1), inset 0 4px 20px rgba(255,255,255,0.6), 0 15px 40px rgba(0,168,168,0.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background-image: radial-gradient(circle at 50% 0%, #ffffff 0%, #eef1f5 100%);
+  background-color: var(--bg-void);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 2rem;
+  overflow: hidden;
+}
+
+/* Diamond gray wash — identical to main site */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%,
+    rgba(238,241,245,0) 0%,
+    rgba(228,233,240,0.45) 60%,
+    rgba(215,222,232,0.6) 100%);
+  pointer-events: none; z-index: 0;
+}
+
+/* Flower of life geometry — etched into the room */
+.fol-bg {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 680px; height: 680px;
+  opacity: 0;
+  animation: fol-emerge 3s ease-out 0.5s forwards;
+  pointer-events: none; z-index: 0;
+}
+.fol-bg circle {
+  fill: none;
+  stroke: rgba(0,168,168,0.06);
+  stroke-width: 0.4;
+}
+@keyframes fol-emerge {
+  0% { opacity: 0; transform: translate(-50%,-50%) scale(0.85) rotate(-15deg); }
+  100% { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0deg); }
+}
+
+/* Glass card */
+.card {
+  position: relative; z-index: 2;
+  max-width: 480px; width: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
+  padding: 52px 44px 44px;
+  opacity: 0;
+  animation: card-in 1.2s ease-out 0.3s forwards;
+}
+@keyframes card-in {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Diamond icon — same pulse as main site */
+.diamond {
+  width: 36px; height: 36px;
+  margin: 0 auto 32px;
+}
+.diamond svg {
+  width: 100%; height: 100%;
+  fill: none; stroke-width: 1;
+  animation: diamond-pulse 4s ease-in-out infinite;
+}
+@keyframes diamond-pulse {
+  0%, 100% {
+    stroke: rgba(0,168,168,0.2);
+    filter: drop-shadow(0 0 2px rgba(0,240,255,0.05));
+  }
+  50% {
+    stroke: var(--teal-dim);
+    filter: drop-shadow(0 0 12px rgba(0,240,255,0.4))
+            drop-shadow(0 0 28px rgba(0,240,255,0.15));
+  }
+}
+
+.error-code {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--teal-dim);
+  margin-bottom: 16px;
+  opacity: 0;
+  animation: fade-up 0.8s ease-out 0.8s forwards;
+}
+h1 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(1.8rem, 4.5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-main);
+  line-height: 1.15;
+  margin-bottom: 16px;
+  text-shadow: 0 0 15px rgba(0,240,255,0.25), 0 1px 1px rgba(255,255,255,0.9);
+  opacity: 0;
+  animation: fade-up 0.8s ease-out 1s forwards;
+}
+h1 .accent {
+  color: var(--teal-dim);
+  text-shadow: 0 0 20px rgba(0,240,255,0.35);
+}
+p {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: #666;
+  line-height: 1.7;
+  margin-bottom: 28px;
+  max-width: 38ch;
+  margin-left: auto; margin-right: auto;
+  opacity: 0;
+  animation: fade-up 0.8s ease-out 1.2s forwards;
+}
+.divider {
+  width: 48px; height: 1px;
+  margin: 0 auto 28px;
+  background: linear-gradient(90deg, transparent, var(--teal-dim), transparent);
+  opacity: 0;
+  animation: fade-up 0.8s ease-out 1.3s forwards;
+}
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.actions {
+  display: flex; gap: 12px;
+  justify-content: center; flex-wrap: wrap;
+  opacity: 0;
+  animation: fade-up 0.8s ease-out 1.5s forwards;
+}
+.btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 11px 26px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+.btn.primary {
+  color: #fff;
+  background: var(--teal-dim);
+  border: 1px solid var(--teal-dim);
+  box-shadow: 0 4px 15px rgba(0,168,168,0.2);
+}
+.btn.primary:hover {
+  background: var(--teal-core);
+  border-color: var(--teal-core);
+  color: var(--text-main);
+  box-shadow: 0 8px 25px rgba(0,240,255,0.3);
+  transform: translateY(-2px);
+}
+.btn.ghost {
+  color: var(--teal-dim);
+  background: rgba(255,255,255,0.5);
+  border: 1px solid var(--teal-dim);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.8);
+}
+.btn.ghost:hover {
+  color: var(--teal-core);
+  border-color: var(--teal-core);
+  background: rgba(255,255,255,0.8);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.8), 0 4px 15px rgba(0,240,255,0.15);
+  transform: translateY(-2px);
+}
+
+.sig {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #bbb;
+  z-index: 2;
+  opacity: 0;
+  animation: fade-up 0.8s ease-out 2s forwards;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .card { padding: 40px 28px 36px; }
+  .fol-bg { width: 400px; height: 400px; }
+  .actions { flex-direction: column; align-items: center; }
+  .btn { width: 100%; max-width: 240px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- Flower of Life — etched geometry -->
+<svg class="fol-bg" viewBox="-50 -50 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="0" cy="0" r="20"/>
+  <circle cx="20" cy="0" r="20"/>
+  <circle cx="-20" cy="0" r="20"/>
+  <circle cx="10" cy="17.32" r="20"/>
+  <circle cx="-10" cy="17.32" r="20"/>
+  <circle cx="10" cy="-17.32" r="20"/>
+  <circle cx="-10" cy="-17.32" r="20"/>
+  <!-- Second ring -->
+  <circle cx="40" cy="0" r="20"/>
+  <circle cx="-40" cy="0" r="20"/>
+  <circle cx="30" cy="17.32" r="20"/>
+  <circle cx="-30" cy="17.32" r="20"/>
+  <circle cx="30" cy="-17.32" r="20"/>
+  <circle cx="-30" cy="-17.32" r="20"/>
+  <circle cx="20" cy="34.64" r="20"/>
+  <circle cx="-20" cy="34.64" r="20"/>
+  <circle cx="20" cy="-34.64" r="20"/>
+  <circle cx="-20" cy="-34.64" r="20"/>
+  <circle cx="0" cy="34.64" r="20"/>
+  <circle cx="0" cy="-34.64" r="20"/>
+</svg>
+
+<div class="card">
+  <div class="diamond">
+    <svg viewBox="0 0 40 40">
+      <path d="M20 2 L38 16 L20 38 L2 16 Z"/>
+      <path d="M2 16 L38 16"/>
+      <path d="M20 2 L12 16"/>
+      <path d="M20 2 L28 16"/>
+      <path d="M12 16 L20 38"/>
+      <path d="M28 16 L20 38"/>
+    </svg>
+  </div>
+  <div class="error-code">404 · Path Not Resolved</div>
+  <h1>This coordinate<br>is <span class="accent">uncharted.</span></h1>
+  <p>The architecture holds. The path you followed doesn't map to a known node in this system.</p>
+  <div class="divider"></div>
+  <div class="actions">
+    <a class="btn primary" href="/">Return to ECCO</a>
+    <a class="btn ghost" href="https://commission.etherealconnectionsco.com">Commission ECCO</a>
+  </div>
+</div>
+
+<div class="sig">Ethereal Connections Co. · Denver, Colorado · Est. 2025</div>
+
+</body>
+</html>

@@ -1,0 +1,21 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ECCO · Netlify _redirects · place at root of etherealconnectionsco.com site
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Purpose: Decouple all client forms from the Google Apps Script deployment URL.
+# Every client form points to `https://etherealconnectionsco.com/api/intake`
+# (stable, brand-owned). This file proxies the request to the current GAS URL.
+#
+# When the GAS URL changes (Apps Script re-deploy creating a new URL, or GAS
+# migration to a different script entirely), update ONLY the target URL below
+# and redeploy this site. All downstream client forms keep working — no file
+# edits, no other redeploys.
+#
+# The `200` status code is critical: it makes Netlify PROXY (not redirect).
+# Browser sees same-origin request to etherealconnectionsco.com.
+# A `301` or `302` would bounce the browser visibly to script.google.com.
+#
+# Syntax: <path>  <target URL>  <status>
+# ═══════════════════════════════════════════════════════════════════════════
+
+/api/intake   https://script.google.com/macros/s/AKfycbx1CHUtI9XR-UPRvWUtUpjoye6yqiVObqCJXXu1OZL23Ortne8KzBWXuRO6ZT_MO-d3/exec   200
