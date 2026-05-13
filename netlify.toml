@@ -1,6 +1,86 @@
+# ═══════════════════════════════════════════════════════════
+#  Netlify configuration — apex-ecco
+#  etherealconnectionsco.com (apex) + /master-context (subpath)
+#
+#  Static site. Single deploy serves multiple ECCO surfaces from
+#  this repo. CI-gated link integrity per Deploy Playbook §3.
+# ═══════════════════════════════════════════════════════════
+
 [build]
-  command = "node check-links.mjs index.html"
   publish = "."
+  command = "node check-links.mjs"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # Self-reference URLs for check-links.mjs. Each target's <link
+  # rel="canonical"> and in-doc references to its own URL would
+  # otherwise create chicken-and-egg failures on first deploy
+  # before that URL exists. The link checker reads these env vars
+  # and skips URLs starting with them.
+  #
+  # MASTER_CONTEXT_CANONICAL is the apex path because the
+  # /master-context surface lives at that path (not a subdomain).
+  MASTER_CONTEXT_CANONICAL = "https://etherealconnectionsco.com/master-context"
+  #
+  # APEX_CANONICAL only needs to be set if the apex index.html
+  # contains a canonical self-reference. Uncomment and set if so.
+  # APEX_CANONICAL = "https://etherealconnectionsco.com"
+
+# ═══════════════════════════════════════════════════════════
+#  SECURITY HEADERS — applied to all routes
+# ═══════════════════════════════════════════════════════════
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# ═══════════════════════════════════════════════════════════
+#  CACHING — immutable static assets (1 year)
+# ═══════════════════════════════════════════════════════════
+# Apex seal
+[[headers]]
+  for = "/seal.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Master Context seal
+[[headers]]
+  for = "/master-context/seal.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ═══════════════════════════════════════════════════════════
+#  CACHING — HTML is short-lived so revisions ship fast
+# ═══════════════════════════════════════════════════════════
+# Apex index
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+# Master Context index
+[[headers]]
+  for = "/master-context/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+# Master Context 404 (custom)
+[[headers]]
+  for = "/master-context/404.html"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+# ═══════════════════════════════════════════════════════════
+#  NOTE on redirects
+# ═══════════════════════════════════════════════════════════
+# This repo also has a `_redirects` file at root. Netlify reads
+# both; netlify.toml [[redirects]] take precedence on conflict.
+# Path-level redirects for the apex are kept in `_redirects` to
+# preserve the existing convention. No netlify.toml redirects
+# are added here.
+#
+# Netlify's default Pretty URLs behavior serves /master-context
+# as /master-context/index.html automatically — no redirect needed.
