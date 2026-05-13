@@ -1,0 +1,91 @@
+Ethereal Connections Co. — etherealconnectionsco.com (apex)
+Commercial marketing surface and accompanying assets.
+
+Copyright (c) 2025–2026 Jeremiah Wade Hearne / Ethereal Connections Co.
+
+ALL RIGHTS RESERVED.
+
+────────────────────────────────────────────────────────────
+
+This repository contains the source for ECCO's commercial
+marketing surface at etherealconnectionsco.com. No license,
+express or implied, is granted to any third party with respect
+to the contents of this repository, except as expressly stated
+in the scope carve-out below.
+
+You MAY NOT, without prior written permission from Ethereal
+Connections Co.:
+
+  — Copy, reproduce, redistribute, or republish any portion of
+    this work, in whole or in part, in any medium.
+
+  — Modify, adapt, translate, or create derivative works from
+    this material.
+
+  — Use this material, in whole or in part, in any commercial
+    product, paid service, paid course, paid newsletter, or
+    other monetized offering.
+
+  — Use the visual identity contained in this repository,
+    including but not limited to: the ECCO seal, the
+    diamond-glass aesthetic, the flower-of-life and pendulum
+    medallion design language, the teal/cream color system,
+    typographic system, layout system, and any associated
+    trade dress. These are protected as the trade dress and
+    unregistered marks of Ethereal Connections Co.
+
+  — Use any text, copy, taglines, or doctrinal phrasing
+    contained in the marketing surface, including but not
+    limited to "Data is the key. We build the lock.",
+    "Infrastructure over influence.", "Provenance over
+    performance.", "Doctrine over excuse.", and related
+    locked phrasings.
+
+The visibility of this repository on a public version-control
+host is editorial — it reflects ECCO's structural-replicability
+doctrine at the architecture layer (see master-context/§J). It
+is not, and shall not be construed as, an invitation, license,
+or grant of any right to reproduce, repackage, or commercially
+appropriate the surface itself.
+
+────────────────────────────────────────────────────────────
+
+SCOPE CARVE-OUT — master-context/
+
+The subdirectory `/master-context/` is governed by its own
+LICENSE file (CC BY-NC-ND 4.0) and is NOT covered by the
+All Rights Reserved terms above. The ECCO Master Context
+Public Edition is a public-research artifact under
+Creative Commons Attribution-NonCommercial-NoDerivatives 4.0
+International; see `/master-context/LICENSE` for full terms.
+
+This carve-out is structural, not exhaustive. Future
+subdirectories that contain their own LICENSE file shall
+be governed by their own terms, and the apex LICENSE
+applies to everything else in this repository by default.
+
+────────────────────────────────────────────────────────────
+
+THIRD-PARTY CONTENT
+
+Third-party content referenced via external URLs (fonts,
+CDN-hosted libraries, embedded media, regulatory citations,
+and similar) remains the property of its respective owners
+and is used under fair use for commentary, reference, or
+loading-time delivery as the context requires.
+
+────────────────────────────────────────────────────────────
+
+LICENSING INQUIRIES
+
+For commercial licensing, partnership proposals, white-label
+discussions, or any use of this material beyond the terms
+above:
+
+  jeremiah@etherealconnectionsco.com
+
+────────────────────────────────────────────────────────────
+
+Provenance over performance.
+Infrastructure over influence.
+Doctrine over excuse.
