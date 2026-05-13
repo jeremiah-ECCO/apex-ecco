@@ -20,6 +20,7 @@
   # MASTER_CONTEXT_CANONICAL is the apex path because the
   # /master-context surface lives at that path (not a subdomain).
   MASTER_CONTEXT_CANONICAL = "https://etherealconnectionsco.com/master-context"
+  NODE_VERSION = "20"
   #
   # APEX_CANONICAL only needs to be set if the apex index.html
   # contains a canonical self-reference. Uncomment and set if so.
