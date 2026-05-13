@@ -1,29 +1,21 @@
 #!/usr/bin/env node
 /**
- * ECCO link integrity check — v5.1 (multi-target + cloud-tolerant)
+ * ECCO link integrity check — v5.2 (multi-target + cloud-tolerant + comment-aware)
  * ---------------------------------------------------------------
+ * v5.1 → v5.2 changes (13 May 2026, second live build):
+ *   + HTML comment stripping before link extraction. v5.1 matched
+ *     href/src patterns globally including inside <!-- --> blocks,
+ *     causing false positives on documented dead-code references
+ *     (e.g. commented-out script tags preserved as documentation).
+ *     v5.2 strips comments via /<!--[\s\S]*?-->/g pre-pass, then
+ *     runs extraction on the stripped HTML. Both link extraction
+ *     and preconnect-hint extraction operate on stripped content,
+ *     so commented-out <link rel="preconnect"> tags also no longer
+ *     incorrectly register as active hints.
+ *
  * v5 → v5.1 changes (13 May 2026, first live build):
- *   + Non-http URI scheme classifier (tel:, sms:, geo:, magnet:, etc.).
- *     v5 classified these as local file paths, which failed because
- *     `tel:7206483276` is not a filesystem path. v5.1 detects any
- *     non-http URI scheme and passes through like mailto:.
- *   + facebook.com / www.facebook.com added to CLOUD_BLOCK_TOLERANT_HOSTS.
- *     Facebook returns 400 to AWS-IP traffic but loads in residential
- *     browsers (same anti-bot pattern as fda.gov/fcc.gov in v4).
- *     Manually spot-checked at time of addition per the whitelist rule.
- *
- * v5 → v5.1 NOT changed:
- *   - All v4 tolerance machinery (preserved verbatim)
- *   - Multi-target architecture (TARGETS, selfEnvVar, base-dir-aware
- *     local resolution, preconnect/dns-prefetch context-skip)
- *
- * v5 inherited from v4 (preserved verbatim):
- *   - 30s timeout, concurrency 4, retries (1500ms backoff)
- *   - Browser UA + full Accept headers
- *   - SKIP_PATTERNS (own-domain, fonts/scripts, login-walled)
- *   - TOLERATED_STATUS (401/403/451/999 anti-bot signal)
- *   - CLOUD_BLOCK_TOLERANT_HOSTS (federal/regulatory cloud-IP blocks)
- *   - CLOUD_BLOCK_TOLERANT_PATHS (sub-tree path-level cloud blocks)
+ *   + URI_SCHEME_RE — non-http URI scheme catch (tel:, sms:, etc.)
+ *   + facebook.com added to CLOUD_BLOCK_TOLERANT_HOSTS
  *
  * v4 → v5 changes (12 May 2026):
  *   + Multi-target TARGETS array (extension point for new surfaces)
@@ -31,6 +23,14 @@
  *   + Full href/src extraction (local files, mailto:, anchors)
  *   + Base-dir-aware local path resolution
  *   + Preconnect/dns-prefetch context-skip via <link> tag parsing
+ *
+ * v4 tolerance machinery (preserved verbatim from May 2 2026 build):
+ *   - 30s timeout, concurrency 4, retries (1500ms backoff)
+ *   - Browser UA + full Accept headers
+ *   - SKIP_PATTERNS (own-domain, fonts/scripts, login-walled)
+ *   - TOLERATED_STATUS (401/403/451/999 anti-bot signal)
+ *   - CLOUD_BLOCK_TOLERANT_HOSTS (federal/regulatory cloud-IP blocks)
+ *   - CLOUD_BLOCK_TOLERANT_PATHS (sub-tree path-level cloud blocks)
  *
  * Doctrine: "Every claim verifiable. Every link live."
  * Live = reachable by a human in a browser. Not "reachable by every bot."
@@ -99,10 +99,8 @@ const ACCEPT_HEADERS = {
 //  TOLERANCE — anti-bot status codes + cloud-IP block whitelist
 // ═══════════════════════════════════════════════════════════
 
-// Anti-automation status codes — site loads for humans, refuses bots.
 const TOLERATED_STATUS = new Set([401, 403, 451, 999]);
 
-// URLs we never even attempt — own domain, font/script CDNs, login-walled.
 const SKIP_PATTERNS = [
   /etherealconnectionsco\.com/,
   /fonts\.googleapis\.com/,
@@ -112,9 +110,6 @@ const SKIP_PATTERNS = [
   /linkedin\.com/,
 ];
 
-// Hosts confirmed to refuse AWS/Netlify traffic while loading normally in
-// residential browsers. Conservative list — only add after confirmed false
-// positive AND manual browser verification at time of addition.
 const CLOUD_BLOCK_TOLERANT_HOSTS = new Set([
   'fda.gov',           'www.fda.gov',
   'usda.gov',          'www.usda.gov',
@@ -124,17 +119,11 @@ const CLOUD_BLOCK_TOLERANT_HOSTS = new Set([
   'healthit.gov',      'www.healthit.gov',
   'nvlpubs.nist.gov',
   'usnews.com',        'www.usnews.com',
-  // Returns persistent 500 to cloud runners; loads in residential browsers.
   'ilga.gov',          'www.ilga.gov',
-  // v5.1 addition (13 May 2026): Facebook returns 400 to AWS-IP traffic on
-  // profile.php endpoints; loads in residential browsers. Manual verify at
-  // time of addition: profile loads cleanly for any signed-in or signed-out
-  // human visitor. Same anti-bot signature as the .gov hosts above.
+  // v5.1 addition: Facebook anti-bot wall on profile.php (manual verified)
   'facebook.com',      'www.facebook.com',
 ]);
 
-// Narrower than full-host: specific path patterns on hosts whose root
-// works fine from cloud but where a particular sub-tree is blocked.
 const CLOUD_BLOCK_TOLERANT_PATHS = [
   /^https?:\/\/(www\.)?ftc\.gov\/business-guidance\/blog\//i,
   /^https?:\/\/(www\.)?justice\.gov\/.*realpage/i,
@@ -144,16 +133,13 @@ const CLOUD_BLOCK_TOLERANT_PATHS = [
 // ═══════════════════════════════════════════════════════════
 //  EXTRACTION PATTERNS
 // ═══════════════════════════════════════════════════════════
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;   // v5.2: stripped before extraction
 const HREF_RE = /(?:href|src)=["']([^"']+)["']/gi;
 const LINK_TAG_RE = /<link\s+[^>]+>/gi;
 const HINT_REL_RE = /\b(?:preconnect|dns-prefetch)\b/i;
 const MAILTO_RE = /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ANCHOR_RE = /^#/;
 const ABS_URL_RE = /^https?:\/\//i;
-// v5.1: non-http URI schemes (tel:, sms:, geo:, magnet:, ftp:, etc.).
-// Generic pattern catches any scheme conforming to RFC 3986. Order in
-// classifier matters: mailto:, data:, http(s): are matched first by their
-// specific patterns; this catches everything else that uses a scheme.
 const URI_SCHEME_RE = /^[a-z][a-z0-9+\-.]*:/i;
 
 // ═══════════════════════════════════════════════════════════
@@ -176,6 +162,16 @@ function isCloudBlockTolerant(url) {
 
 function matchesSkipPattern(url) {
   return SKIP_PATTERNS.some((p) => p.test(url));
+}
+
+// v5.2: strip HTML comments before extraction. Comments are documentation,
+// not active markup; href/src patterns inside them are NOT live references
+// and must not register as broken-link failures. Preserves the surrounding
+// HTML structure (comments are replaced with empty strings, not removed
+// entirely, so line positions don't shift — useful if we ever surface
+// line-level error reporting).
+function stripHtmlComments(html) {
+  return html.replace(HTML_COMMENT_RE, '');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -286,15 +282,20 @@ async function checkTarget(target) {
     };
   }
 
+  // v5.2: strip HTML comments before any extraction. References inside
+  // <!-- --> are documentation, not live markup, and must not register.
+  const stripped = stripHtmlComments(html);
+  const commentCount = (html.match(HTML_COMMENT_RE) || []).length;
+
   const links = new Set();
   let match;
-  while ((match = HREF_RE.exec(html)) !== null) {
+  while ((match = HREF_RE.exec(stripped)) !== null) {
     links.add(match[1].trim());
   }
 
   const hintUrls = new Set();
   let linkTagMatch;
-  while ((linkTagMatch = LINK_TAG_RE.exec(html)) !== null) {
+  while ((linkTagMatch = LINK_TAG_RE.exec(stripped)) !== null) {
     const tagText = linkTagMatch[0];
     const relMatch = tagText.match(/rel=["']([^"']+)["']/i);
     if (!relMatch || !HINT_REL_RE.test(relMatch[1])) continue;
@@ -303,6 +304,7 @@ async function checkTarget(target) {
   }
 
   console.log(color('dim', `  → ${links.size} unique link${links.size === 1 ? '' : 's'} extracted`));
+  if (commentCount) console.log(color('dim', `  → ${commentCount} HTML comment${commentCount === 1 ? '' : 's'} stripped before extraction`));
   if (hintUrls.size) console.log(color('dim', `  → ${hintUrls.size} preconnect/dns-prefetch hint${hintUrls.size === 1 ? '' : 's'} will be skipped`));
   if (selfUrl) console.log(color('dim', `  → self-reference URL: ${selfUrl}`));
   console.log();
@@ -339,15 +341,11 @@ async function checkTarget(target) {
       remoteQueue.push(link);
       continue;
     }
-    // v5.1: non-http URI schemes (tel:, sms:, geo:, etc.). Must come AFTER
-    // mailto:/data:/http(s) specific checks but BEFORE the local-file
-    // fallthrough — otherwise tel:7206483276 gets misclassified as a path.
     if (URI_SCHEME_RE.test(link)) {
       const scheme = link.split(':')[0].toLowerCase();
       immediate.push({ link, result: { ok: true, kind: 'uri-scheme' }, label: scheme });
       continue;
     }
-    // Local file reference — check filesystem (resolved next)
     immediate.push({ link, kind: 'local-pending', label: 'local' });
   }
 
@@ -409,7 +407,7 @@ async function checkTarget(target) {
 //  MAIN
 // ═══════════════════════════════════════════════════════════
 async function main() {
-  console.log(color('dim', `\n  ECCO link integrity check v5.1 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
+  console.log(color('dim', `\n  ECCO link integrity check v5.2 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
 
   const results = [];
   for (const target of TARGETS) {
