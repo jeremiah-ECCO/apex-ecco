@@ -1,34 +1,36 @@
 #!/usr/bin/env node
 /**
- * ECCO link integrity check — v5 (multi-target + cloud-tolerant)
+ * ECCO link integrity check — v5.1 (multi-target + cloud-tolerant)
  * ---------------------------------------------------------------
- * Merges:
- *   - SPA-canonical multi-target architecture (TARGETS array,
- *     per-target self-reference env var, base-dir-aware local
- *     path resolution, preconnect/dns-prefetch context-skip)
- *   - apex v4 cloud-block tolerance (CLOUD_BLOCK_TOLERANT_HOSTS/PATHS,
- *     tolerated status codes 401/403/451/999, browser UA, retries
- *     with backoff, 30s timeout, concurrency 4)
+ * v5 → v5.1 changes (13 May 2026, first live build):
+ *   + Non-http URI scheme classifier (tel:, sms:, geo:, magnet:, etc.).
+ *     v5 classified these as local file paths, which failed because
+ *     `tel:7206483276` is not a filesystem path. v5.1 detects any
+ *     non-http URI scheme and passes through like mailto:.
+ *   + facebook.com / www.facebook.com added to CLOUD_BLOCK_TOLERANT_HOSTS.
+ *     Facebook returns 400 to AWS-IP traffic but loads in residential
+ *     browsers (same anti-bot pattern as fda.gov/fcc.gov in v4).
+ *     Manually spot-checked at time of addition per the whitelist rule.
  *
- * v4 → v5 changes:
- *   + Multi-target: TARGETS array drives coverage. Each target =
- *     one HTML file; add an entry to bring a surface under integrity.
- *   + Per-target self-reference env var (chicken-and-egg skip for
- *     a doc citing its own canonical URL before it exists).
- *   + Full href/src extraction (was http-URL-only): catches local
- *     files (seal.jpg), mailto:, anchors (#section), absolute URLs.
- *   + Base-dir-aware local path resolution: master-context/index.html's
- *     relative seal.jpg resolves under master-context/, not apex root.
- *   + Preconnect/dns-prefetch context-skip by parsing <link> tags
- *     (the root-path 404 from these hint URLs is expected behavior).
+ * v5 → v5.1 NOT changed:
+ *   - All v4 tolerance machinery (preserved verbatim)
+ *   - Multi-target architecture (TARGETS, selfEnvVar, base-dir-aware
+ *     local resolution, preconnect/dns-prefetch context-skip)
  *
- * v4 behavior preserved verbatim:
+ * v5 inherited from v4 (preserved verbatim):
  *   - 30s timeout, concurrency 4, retries (1500ms backoff)
  *   - Browser UA + full Accept headers
  *   - SKIP_PATTERNS (own-domain, fonts/scripts, login-walled)
  *   - TOLERATED_STATUS (401/403/451/999 anti-bot signal)
  *   - CLOUD_BLOCK_TOLERANT_HOSTS (federal/regulatory cloud-IP blocks)
  *   - CLOUD_BLOCK_TOLERANT_PATHS (sub-tree path-level cloud blocks)
+ *
+ * v4 → v5 changes (12 May 2026):
+ *   + Multi-target TARGETS array (extension point for new surfaces)
+ *   + Per-target self-reference env var (chicken-and-egg skip)
+ *   + Full href/src extraction (local files, mailto:, anchors)
+ *   + Base-dir-aware local path resolution
+ *   + Preconnect/dns-prefetch context-skip via <link> tag parsing
  *
  * Doctrine: "Every claim verifiable. Every link live."
  * Live = reachable by a human in a browser. Not "reachable by every bot."
@@ -57,11 +59,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ═══════════════════════════════════════════════════════════
 //  TARGETS — surfaces under integrity coverage
 // ═══════════════════════════════════════════════════════════
-// Each target = an HTML file. Add an entry to extend coverage.
-//   path         relative to this script (apex root)
-//   label        for log output
-//   selfEnvVar   name of env var holding canonical URL for
-//                self-reference skip (optional; null if N/A)
 const TARGETS = [
   {
     path: 'index.html',
@@ -106,8 +103,6 @@ const ACCEPT_HEADERS = {
 const TOLERATED_STATUS = new Set([401, 403, 451, 999]);
 
 // URLs we never even attempt — own domain, font/script CDNs, login-walled.
-// The own-domain skip is a coarse fallback; the per-target selfEnvVar
-// handles canonical self-references more precisely. Both can apply.
 const SKIP_PATTERNS = [
   /etherealconnectionsco\.com/,
   /fonts\.googleapis\.com/,
@@ -117,9 +112,9 @@ const SKIP_PATTERNS = [
   /linkedin\.com/,
 ];
 
-// Hosts confirmed (May 1–2 2026 build runs) to refuse AWS/Netlify traffic
-// while loading normally in residential browsers. Conservative list — only
-// add a host after a confirmed false positive AND a manual spot-check.
+// Hosts confirmed to refuse AWS/Netlify traffic while loading normally in
+// residential browsers. Conservative list — only add after confirmed false
+// positive AND manual browser verification at time of addition.
 const CLOUD_BLOCK_TOLERANT_HOSTS = new Set([
   'fda.gov',           'www.fda.gov',
   'usda.gov',          'www.usda.gov',
@@ -130,18 +125,19 @@ const CLOUD_BLOCK_TOLERANT_HOSTS = new Set([
   'nvlpubs.nist.gov',
   'usnews.com',        'www.usnews.com',
   // Returns persistent 500 to cloud runners; loads in residential browsers.
-  // Same operational signature as the 4xx cloud-block pattern.
   'ilga.gov',          'www.ilga.gov',
+  // v5.1 addition (13 May 2026): Facebook returns 400 to AWS-IP traffic on
+  // profile.php endpoints; loads in residential browsers. Manual verify at
+  // time of addition: profile loads cleanly for any signed-in or signed-out
+  // human visitor. Same anti-bot signature as the .gov hosts above.
+  'facebook.com',      'www.facebook.com',
 ]);
 
 // Narrower than full-host: specific path patterns on hosts whose root
 // works fine from cloud but where a particular sub-tree is blocked.
 const CLOUD_BLOCK_TOLERANT_PATHS = [
-  // FTC business-guidance blog: ftc.gov root works; this path 404s from cloud.
   /^https?:\/\/(www\.)?ftc\.gov\/business-guidance\/blog\//i,
-  // DOJ realpage path observed cloud-blocked (404 to cloud, 200 to humans).
   /^https?:\/\/(www\.)?justice\.gov\/.*realpage/i,
-  // NIST system/files PDFs — host nist.gov ok, this sub-tree blocks cloud.
   /^https?:\/\/(www\.)?nist\.gov\/system\/files\//i,
 ];
 
@@ -154,6 +150,11 @@ const HINT_REL_RE = /\b(?:preconnect|dns-prefetch)\b/i;
 const MAILTO_RE = /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ANCHOR_RE = /^#/;
 const ABS_URL_RE = /^https?:\/\//i;
+// v5.1: non-http URI schemes (tel:, sms:, geo:, magnet:, ftp:, etc.).
+// Generic pattern catches any scheme conforming to RFC 3986. Order in
+// classifier matters: mailto:, data:, http(s): are matched first by their
+// specific patterns; this catches everything else that uses a scheme.
+const URI_SCHEME_RE = /^[a-z][a-z0-9+\-.]*:/i;
 
 // ═══════════════════════════════════════════════════════════
 //  HELPERS
@@ -181,10 +182,6 @@ function matchesSkipPattern(url) {
 //  LOCAL FILE CHECK — base-dir-aware
 // ═══════════════════════════════════════════════════════════
 async function checkLocal(linkPath, baseDir) {
-  // Strip query/hash. Resolve relative paths against the TARGET's
-  // directory (so master-context/index.html's `seal.jpg` resolves to
-  // master-context/seal.jpg). Absolute paths (starting with /) resolve
-  // against the publish root (the script's directory).
   const cleaned = linkPath.split('#')[0].split('?')[0];
   if (!cleaned) return { ok: true, kind: 'anchor-only' };
   const fsPath = cleaned.startsWith('/')
@@ -214,18 +211,15 @@ async function checkRemote(url, attempt = 0) {
     const ok = res.status >= 200 && res.status < 400;
     const transient5xx = res.status >= 500 && res.status < 600;
 
-    // Retry on transient 5xx
     if (transient5xx && attempt < RETRIES) {
       globalThis.clearTimeout(t);
       await sleep(1500);
       return checkRemote(url, attempt + 1);
     }
 
-    // Tolerated by status code (anti-bot signal)?
     let tolerated = TOLERATED_STATUS.has(res.status);
     let toleratedReason = tolerated ? 'anti-bot status' : null;
 
-    // Tolerated by cloud-block whitelist?
     if (!ok && !tolerated && isCloudBlockTolerant(url)) {
       tolerated = true;
       toleratedReason = 'cloud-block-tolerant';
@@ -237,7 +231,6 @@ async function checkRemote(url, attempt = 0) {
       await sleep(1500);
       return checkRemote(url, attempt + 1);
     }
-    // Network error — tolerate if host is on the cloud-block whitelist.
     if (isCloudBlockTolerant(url)) {
       return {
         ok: false, tolerated: true, toleratedReason: 'cloud-block-tolerant',
@@ -293,14 +286,12 @@ async function checkTarget(target) {
     };
   }
 
-  // Extract candidate links from href/src attributes
   const links = new Set();
   let match;
   while ((match = HREF_RE.exec(html)) !== null) {
     links.add(match[1].trim());
   }
 
-  // Identify preconnect/dns-prefetch hint URLs to skip
   const hintUrls = new Set();
   let linkTagMatch;
   while ((linkTagMatch = LINK_TAG_RE.exec(html)) !== null) {
@@ -316,9 +307,8 @@ async function checkTarget(target) {
   if (selfUrl) console.log(color('dim', `  → self-reference URL: ${selfUrl}`));
   console.log();
 
-  // First pass: classify each link, segregate immediate-pass/skip from remote-check
   const remoteQueue = [];
-  const immediate = []; // { link, result?, kind?, label }
+  const immediate = [];
 
   for (const link of links) {
     if (hintUrls.has(link)) {
@@ -342,7 +332,6 @@ async function checkTarget(target) {
       continue;
     }
     if (ABS_URL_RE.test(link)) {
-      // Apply SKIP_PATTERNS to remote URLs
       if (matchesSkipPattern(link)) {
         immediate.push({ link, result: { ok: true, kind: 'skip-pattern' }, label: 'skip-pat' });
         continue;
@@ -350,11 +339,18 @@ async function checkTarget(target) {
       remoteQueue.push(link);
       continue;
     }
+    // v5.1: non-http URI schemes (tel:, sms:, geo:, etc.). Must come AFTER
+    // mailto:/data:/http(s) specific checks but BEFORE the local-file
+    // fallthrough — otherwise tel:7206483276 gets misclassified as a path.
+    if (URI_SCHEME_RE.test(link)) {
+      const scheme = link.split(':')[0].toLowerCase();
+      immediate.push({ link, result: { ok: true, kind: 'uri-scheme' }, label: scheme });
+      continue;
+    }
     // Local file reference — check filesystem (resolved next)
     immediate.push({ link, kind: 'local-pending', label: 'local' });
   }
 
-  // Resolve local file checks (sequential; fast)
   for (const item of immediate) {
     if (item.kind === 'local-pending') {
       item.result = await checkLocal(item.link, baseDir);
@@ -362,7 +358,6 @@ async function checkTarget(target) {
     }
   }
 
-  // Run remote checks with concurrency
   let remoteResults = [];
   if (remoteQueue.length) {
     process.stdout.write(color('dim', `  fetching ${remoteQueue.length} remote URL${remoteQueue.length === 1 ? '' : 's'}…`));
@@ -370,7 +365,6 @@ async function checkTarget(target) {
     process.stdout.write(color('dim', ' done\n'));
   }
 
-  // Log all results
   let passed = 0, skipped = 0, tolerated = 0;
   const failures = [];
 
@@ -415,7 +409,7 @@ async function checkTarget(target) {
 //  MAIN
 // ═══════════════════════════════════════════════════════════
 async function main() {
-  console.log(color('dim', `\n  ECCO link integrity check v5 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
+  console.log(color('dim', `\n  ECCO link integrity check v5.1 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
 
   const results = [];
   for (const target of TARGETS) {
