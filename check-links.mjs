@@ -1,7 +1,20 @@
 #!/usr/bin/env node
 /**
- * ECCO link integrity check — v5.2 (multi-target + cloud-tolerant + comment-aware)
+ * ECCO link integrity check — v5.3 (multi-target + cloud-tolerant + comment-aware)
  * ---------------------------------------------------------------
+ * v5.2 → v5.3 changes (20 May 2026, post-v10.6 thread):
+ *   + privacy-policy.html added as 3rd target (selfEnvVar: null)
+ *   + terms.html added as 4th target (selfEnvVar: null)
+ *   No architectural changes — additive coverage only. Both surfaces
+ *   are stable customer-facing legal pages deployed 19 May 2026. Self-
+ *   reference loops are not expected, so selfEnvVar is null on both.
+ *   Deferred (pending operator scope decision in the next thread):
+ *     - why/index.html — active-development surface per the master-
+ *       context README "continued development" posture; may carry
+ *       intentional in-flight links during transitions.
+ *     - 404 pages (404_main_site.html, master-context/404.html) —
+ *       low link density, lower priority.
+ *
  * v5.1 → v5.2 changes (13 May 2026, second live build):
  *   + HTML comment stripping before link extraction. v5.1 matched
  *     href/src patterns globally including inside <!-- --> blocks,
@@ -70,6 +83,22 @@ const TARGETS = [
     label: 'master-context',
     selfEnvVar: 'MASTER_CONTEXT_CANONICAL',
   },
+  // v5.3 additions (2026-05-20): stable customer-facing legal pages.
+  {
+    path: 'privacy-policy.html',
+    label: 'privacy-policy',
+    selfEnvVar: null,
+  },
+  {
+    path: 'terms.html',
+    label: 'terms',
+    selfEnvVar: null,
+  },
+  // Deferred for next thread:
+  //   why/index.html — active-development surface; intentional in-flight
+  //     links during transitions could trigger false-positive failures.
+  //   404 pages (404_main_site.html, master-context/404.html) — lower
+  //     priority, low link density.
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -407,7 +436,7 @@ async function checkTarget(target) {
 //  MAIN
 // ═══════════════════════════════════════════════════════════
 async function main() {
-  console.log(color('dim', `\n  ECCO link integrity check v5.2 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
+  console.log(color('dim', `\n  ECCO link integrity check v5.3 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
 
   const results = [];
   for (const target of TARGETS) {
