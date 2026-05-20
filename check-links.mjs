@@ -1,19 +1,28 @@
 #!/usr/bin/env node
 /**
- * ECCO link integrity check — v5.3 (multi-target + cloud-tolerant + comment-aware)
+ * ECCO link integrity check — v5.4 (multi-target + cloud-tolerant + comment-aware)
  * ---------------------------------------------------------------
+ * v5.3 → v5.4 changes (20 May 2026, post-v6 thread):
+ *   + why/index.html added as 5th target (selfEnvVar: null)
+ *   + 404_main_site.html added as 6th target (selfEnvVar: null)
+ *   + master-context/404.html added as 7th target (selfEnvVar: null)
+ *   Resolves all three v5.3 deferrals. Doctrinal rationale on /why:
+ *   "Every claim verifiable. Every link live." applies to /why too;
+ *   the "continued development" posture means inspectable while in-
+ *   progress, not exempt from CI gating. Push discipline carries the
+ *   load — work stays local until green, then ships. No tolerance
+ *   machinery added; architecture unchanged.
+ *   /why outbound verified live 2026-05-20: no absolute self-refs to
+ *   etherealconnectionsco.com/why/, so WHY_CANONICAL env var is not
+ *   needed (additive-only if /why later self-references).
+ *   404 pages have low link density (apex 404 → 2 links).
+ *
  * v5.2 → v5.3 changes (20 May 2026, post-v10.6 thread):
  *   + privacy-policy.html added as 3rd target (selfEnvVar: null)
  *   + terms.html added as 4th target (selfEnvVar: null)
  *   No architectural changes — additive coverage only. Both surfaces
  *   are stable customer-facing legal pages deployed 19 May 2026. Self-
  *   reference loops are not expected, so selfEnvVar is null on both.
- *   Deferred (pending operator scope decision in the next thread):
- *     - why/index.html — active-development surface per the master-
- *       context README "continued development" posture; may carry
- *       intentional in-flight links during transitions.
- *     - 404 pages (404_main_site.html, master-context/404.html) —
- *       low link density, lower priority.
  *
  * v5.1 → v5.2 changes (13 May 2026, second live build):
  *   + HTML comment stripping before link extraction. v5.1 matched
@@ -94,11 +103,26 @@ const TARGETS = [
     label: 'terms',
     selfEnvVar: null,
   },
-  // Deferred for next thread:
-  //   why/index.html — active-development surface; intentional in-flight
-  //     links during transitions could trigger false-positive failures.
-  //   404 pages (404_main_site.html, master-context/404.html) — lower
-  //     priority, low link density.
+  // v5.4 additions (2026-05-20): /why and 404 pages.
+  // /why doctrinal note: held to "every link live" at full strictness.
+  // No tolerance machinery added; push discipline carries the load.
+  // No WHY_CANONICAL — /why has no absolute self-references (verified
+  // 2026-05-20). Add WHY_CANONICAL later if /why ever self-references.
+  {
+    path: 'why/index.html',
+    label: 'why',
+    selfEnvVar: null,
+  },
+  {
+    path: '404_main_site.html',
+    label: '404-main',
+    selfEnvVar: null,
+  },
+  {
+    path: 'master-context/404.html',
+    label: '404-master-context',
+    selfEnvVar: null,
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -436,7 +460,7 @@ async function checkTarget(target) {
 //  MAIN
 // ═══════════════════════════════════════════════════════════
 async function main() {
-  console.log(color('dim', `\n  ECCO link integrity check v5.3 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
+  console.log(color('dim', `\n  ECCO link integrity check v5.4 · ${TARGETS.length} target${TARGETS.length === 1 ? '' : 's'}`));
 
   const results = [];
   for (const target of TARGETS) {
